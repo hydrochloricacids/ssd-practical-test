@@ -1,11 +1,12 @@
 const express = require('express');
 const { Pool } = require('pg');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const app = express();
 const PORT = 3000;
 
+app.disable('x-powered-by');
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
@@ -19,11 +20,11 @@ const pool = new Pool({
 
 function escapeHtml(str) {
   return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 async function initDB() {
@@ -45,14 +46,14 @@ async function initDB() {
   `);
 
   const result = await pool.query('SELECT COUNT(*) FROM common_passwords');
-  if (parseInt(result.rows[0].count) === 0) {
+  if (Number.parseInt(result.rows[0].count) === 0) {
     const filePath = path.join(__dirname, 'common-passwords.txt');
     if (fs.existsSync(filePath)) {
       const lines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(function (l) { return l.trim().length > 0; });
-      var batchSize = 1000;
-      for (var i = 0; i < lines.length; i += batchSize) {
-        var batch = lines.slice(i, i + batchSize);
-        var placeholders = batch.map(function (_, idx) { return '($' + (idx + 1) + ')'; }).join(',');
+      const batchSize = 1000;
+      for (let i = 0; i < lines.length; i += batchSize) {
+        const batch = lines.slice(i, i + batchSize);
+        const placeholders = batch.map(function (_, idx) { return '($' + (idx + 1) + ')'; }).join(',');
         await pool.query('INSERT INTO common_passwords (password) VALUES ' + placeholders, batch);
       }
       console.log('Loaded ' + lines.length + ' common passwords');
@@ -81,7 +82,7 @@ function validatePasswordFrontend() {
 }
 
 async function validatePasswordBackend(password) {
-  var errors = [];
+  const errors = [];
   if (!password || typeof password !== 'string') {
     errors.push('Password is required');
     return errors;
@@ -93,7 +94,7 @@ async function validatePasswordBackend(password) {
     errors.push('Password must not exceed 128 characters');
   }
   if (password.length >= 12) {
-    var result = await pool.query('SELECT 1 FROM common_passwords WHERE password = $1 LIMIT 1', [password]);
+    const result = await pool.query('SELECT 1 FROM common_passwords WHERE password = $1 LIMIT 1', [password]);
     if (result.rows.length > 0) {
       errors.push('This password is too common. Please choose a different password');
     }
@@ -102,7 +103,7 @@ async function validatePasswordBackend(password) {
 }
 
 app.get('/', function (req, res) {
-  var error = req.query.error || '';
+  const error = req.query.error || '';
   res.send(
     '<!DOCTYPE html><html><head><title>Home</title></head><body>' +
     '<h1>Login</h1>' +
@@ -123,7 +124,7 @@ app.get('/', function (req, res) {
 });
 
 app.get('/register', function (req, res) {
-  var error = req.query.error || '';
+  const error = req.query.error || '';
   res.send(
     '<!DOCTYPE html><html><head><title>Create Account</title></head><body>' +
     '<h1>Create Account</h1>' +
@@ -144,12 +145,12 @@ app.get('/register', function (req, res) {
 });
 
 app.post('/register', async function (req, res) {
-  var username = req.body.username;
-  var password = req.body.password;
+  const username = req.body.username;
+  const password = req.body.password;
   if (!username || !password) {
     return res.redirect('/register?error=' + encodeURIComponent('Username and password are required'));
   }
-  var errors = await validatePasswordBackend(password);
+  const errors = await validatePasswordBackend(password);
   if (errors.length > 0) {
     return res.redirect('/register?error=' + encodeURIComponent(errors.join('. ')));
   }
@@ -166,12 +167,12 @@ app.post('/register', async function (req, res) {
 });
 
 app.post('/login', async function (req, res) {
-  var username = req.body.username;
-  var password = req.body.password;
+  const username = req.body.username;
+  const password = req.body.password;
   if (!username || !password) {
     return res.redirect('/?error=' + encodeURIComponent('Username and password are required'));
   }
-  var errors = await validatePasswordBackend(password);
+  const errors = await validatePasswordBackend(password);
   if (errors.length > 0) {
     return res.redirect('/?error=' + encodeURIComponent(errors.join('. ')));
   }
