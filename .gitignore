@@ -1,0 +1,5 @@
+node_modules/
+gitea-data/
+screenshots/
+common-passwords.txt
+*.log
